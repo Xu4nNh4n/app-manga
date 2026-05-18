@@ -1,8 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import '../controllers/chapter_access.dart';
+import '../controllers/reading_controller.dart';
 import '../models/truyen.dart';
-import '../services/auth_service.dart';
-import '../services/coin_service.dart';
 import '../utils/constants.dart';
 import '../widgets/login_wall_overlay.dart';
 import '../widgets/reading_settings_sheet.dart';
@@ -25,13 +25,8 @@ class ReadingScreen extends StatefulWidget {
 class _ReadingScreenState extends State<ReadingScreen>
     with TickerProviderStateMixin {
   // === STATE VARIABLES ===
-  late int _currentChapterIndex; // Index chương hiện tại
-  bool _showControls = true; // Hiện/ẩn thanh điều khiển
+  late final ReadingController _reader;
   final ScrollController _scrollController = ScrollController();
-  double _readingProgress = 0.0; // Tiến trình đọc (0-1)
-  Color _backgroundColor = Colors.black; // Nền đọc truyện tranh mặc định đen
-  bool _isFitWidth = true; // Fit to width hay original size
-  int _currentPageDisplay = 1; // Trang đang hiển thị (cho page indicator)
 
   // Animation controller (ẩn/hiện controls)
   late AnimationController _controlsAnimController;
@@ -40,7 +35,10 @@ class _ReadingScreenState extends State<ReadingScreen>
   @override
   void initState() {
     super.initState();
-    _currentChapterIndex = widget.initialChapterIndex;
+    _reader = ReadingController(
+      story: widget.story,
+      initialChapterIndex: widget.initialChapterIndex,
+    );
 
     // Animation cho controls
     _controlsAnimController = AnimationController(
@@ -66,28 +64,15 @@ class _ReadingScreenState extends State<ReadingScreen>
 
   // Cập nhật thanh tiến trình + trang hiện tại
   void _updateReadingProgress() {
-    if (_scrollController.hasClients &&
-        _scrollController.position.maxScrollExtent > 0) {
-      final chapter = widget.story.chapters[_currentChapterIndex];
-      final progress =
-          _scrollController.offset / _scrollController.position.maxScrollExtent;
-      final currentPage = (progress * chapter.pageCount).ceil().clamp(
-        1,
-        chapter.pageCount,
-      );
-
-      setState(() {
-        _readingProgress = progress.clamp(0.0, 1.0);
-        _currentPageDisplay = currentPage;
-      });
-    }
+    _reader.updateReadingProgress(_scrollController);
+    setState(() {});
   }
 
   // Toggle hiện/ẩn thanh điều khiển
   void _toggleControls() {
     setState(() {
-      _showControls = !_showControls;
-      if (_showControls) {
+      _reader.toggleControls();
+      if (_reader.showControls) {
         _controlsAnimController.forward();
       } else {
         _controlsAnimController.reverse();
@@ -97,36 +82,25 @@ class _ReadingScreenState extends State<ReadingScreen>
 
   // Chuyển chương
   void _changeChapter(int newIndex) {
-    if (newIndex >= 0 && newIndex < widget.story.chapters.length) {
-      final chapter = widget.story.chapters[newIndex];
-      final canRead = AuthService().canReadChapter(
-        newIndex,
-        freeChapters: widget.story.freeChapters,
-        storyId: widget.story.id,
-        chapterId: chapter.id,
-      );
-
-      if (!canRead) {
-        if (!AuthService().isLoggedIn) {
-          // Chưa đăng nhập → hiện Login Wall
+    if (newIndex >= 0 && newIndex < _reader.story.chapters.length) {
+      switch (_reader.accessForChapter(newIndex)) {
+        case ChapterAccessAction.read:
+          _goToChapter(newIndex);
+          return;
+        case ChapterAccessAction.login:
           showLoginWallDialog(context);
-        } else {
-          // Đã đăng nhập nhưng chưa mua → hiện Unlock Dialog
+          return;
+        case ChapterAccessAction.unlock:
           _showUnlockDialog(newIndex);
-        }
-        return;
+          return;
       }
-
-      _goToChapter(newIndex);
     }
   }
 
   // Chuyển thẳng đến chương (không kiểm tra quyền)
   void _goToChapter(int newIndex) {
     setState(() {
-      _currentChapterIndex = newIndex;
-      _readingProgress = 0;
-      _currentPageDisplay = 1;
+      _reader.goToChapter(newIndex);
     });
 
     if (_scrollController.hasClients) {
@@ -140,7 +114,7 @@ class _ReadingScreenState extends State<ReadingScreen>
 
   // Dialog mở khóa chương bằng xu
   void _showUnlockDialog(int chapterIndex) {
-    final story = widget.story;
+    final story = _reader.story;
     final chapter = story.chapters[chapterIndex];
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -193,7 +167,9 @@ class _ReadingScreenState extends State<ReadingScreen>
                     child: Text(
                       'Cần ${story.coinPerChapter} xu để mở khóa chương này',
                       style: TextStyle(
-                        color: isDark ? Colors.amber.shade200 : Colors.amber.shade800,
+                        color: isDark
+                            ? Colors.amber.shade200
+                            : Colors.amber.shade800,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -216,17 +192,11 @@ class _ReadingScreenState extends State<ReadingScreen>
           ElevatedButton.icon(
             onPressed: () async {
               Navigator.pop(ctx);
-              final result = await CoinService().unlockChapter(
-                storyId: story.id,
-                chapterId: chapter.id,
-                cost: story.coinPerChapter,
-              );
+              final result = await _reader.unlockChapter(chapterIndex);
 
               if (!mounted) return;
 
               if (result.isSuccess) {
-                // Refresh cached user data để cập nhật unlockedChapters
-                await AuthService().refreshUserData();
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('✅ ${result.message}'),
@@ -298,7 +268,7 @@ class _ReadingScreenState extends State<ReadingScreen>
                   vertical: AppSpacing.sm,
                 ),
                 child: Text(
-                  '${AppStrings.chapters} (${widget.story.chapters.length})',
+                  '${AppStrings.chapters} (${_reader.story.chapters.length})',
                   style: TextStyle(
                     fontSize: AppFontSizes.title,
                     fontWeight: FontWeight.w700,
@@ -310,16 +280,11 @@ class _ReadingScreenState extends State<ReadingScreen>
               // Danh sách chương
               Expanded(
                 child: ListView.builder(
-                  itemCount: widget.story.chapters.length,
+                  itemCount: _reader.story.chapters.length,
                   itemBuilder: (context, index) {
-                    final chapter = widget.story.chapters[index];
-                    final isCurrent = index == _currentChapterIndex;
-                    final isLocked = !AuthService().canReadChapter(
-                      index,
-                      freeChapters: widget.story.freeChapters,
-                      storyId: widget.story.id,
-                      chapterId: chapter.id,
-                    );
+                    final chapter = _reader.story.chapters[index];
+                    final isCurrent = index == _reader.currentChapterIndex;
+                    final isLocked = _reader.isChapterLocked(index);
                     return ListTile(
                       leading: Container(
                         width: 32,
@@ -373,49 +338,44 @@ class _ReadingScreenState extends State<ReadingScreen>
                               color: AppColors.gradientStart,
                             )
                           : isLocked
-                              ? Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        gradient: const LinearGradient(
-                                          colors: [
-                                            AppColors.gradientStart,
-                                            AppColors.gradientEnd,
-                                          ],
-                                        ),
-                                        borderRadius: BorderRadius.circular(
-                                          AppRadius.full,
-                                        ),
-                                      ),
-                                      child: const Text(
-                                        'VIP',
-                                        style: TextStyle(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w800,
-                                          color: Colors.white,
-                                        ),
-                                      ),
+                          ? Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        AppColors.gradientStart,
+                                        AppColors.gradientEnd,
+                                      ],
                                     ),
-                                    const SizedBox(width: 4),
-                                    const Icon(
-                                      Icons.lock,
-                                      size: 18,
-                                      color: AppColors.gradientStart,
+                                    borderRadius: BorderRadius.circular(
+                                      AppRadius.full,
                                     ),
-                                  ],
-                                )
-                              : null,
+                                  ),
+                                  child: const Text(
+                                    'VIP',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(
+                                  Icons.lock,
+                                  size: 18,
+                                  color: AppColors.gradientStart,
+                                ),
+                              ],
+                            )
+                          : null,
                       onTap: () {
-                        if (isLocked) {
-                          Navigator.pop(context);
-                          showLoginWallDialog(context);
-                          return;
-                        }
                         Navigator.pop(context);
                         _changeChapter(index);
                       },
@@ -437,20 +397,24 @@ class _ReadingScreenState extends State<ReadingScreen>
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) => MangaReadingSettingsSheet(
-        backgroundColor: _backgroundColor,
-        isFitWidth: _isFitWidth,
+        backgroundColor: _reader.backgroundColor,
+        isFitWidth: _reader.isFitWidth,
         onBackgroundChanged: (color) {
-          setState(() => _backgroundColor = color);
+          setState(() => _reader.setBackgroundColor(color));
         },
         onFitWidthChanged: (value) {
-          setState(() => _isFitWidth = value);
+          setState(() => _reader.setFitWidth(value));
         },
       ),
     );
   }
 
   // Cập nhật hàm helper render ảnh
-  Widget _buildPageImage(String imagePath, {BoxFit fit = BoxFit.contain, double? width}) {
+  Widget _buildPageImage(
+    String imagePath, {
+    BoxFit fit = BoxFit.contain,
+    double? width,
+  }) {
     if (imagePath.startsWith('http')) {
       return CachedNetworkImage(
         imageUrl: imagePath,
@@ -458,7 +422,7 @@ class _ReadingScreenState extends State<ReadingScreen>
         width: width,
         placeholder: (context, url) => Container(
           height: 400,
-          color: _backgroundColor,
+          color: _reader.backgroundColor,
           child: Center(
             child: CircularProgressIndicator(
               color: AppColors.gradientStart.withValues(alpha: 0.5),
@@ -528,12 +492,12 @@ class _ReadingScreenState extends State<ReadingScreen>
 
   @override
   Widget build(BuildContext context) {
-    final chapter = widget.story.chapters[_currentChapterIndex];
-    final hasPrevious = _currentChapterIndex > 0;
-    final hasNext = _currentChapterIndex < widget.story.chapters.length - 1;
+    final chapter = _reader.currentChapter;
+    final hasPrevious = _reader.hasPrevious;
+    final hasNext = _reader.hasNext;
 
     return Scaffold(
-      backgroundColor: _backgroundColor,
+      backgroundColor: _reader.backgroundColor,
       body: Stack(
         children: [
           // === NỘI DUNG TRANG TRUYỆN TRANH ===
@@ -542,10 +506,10 @@ class _ReadingScreenState extends State<ReadingScreen>
             child: ListView.builder(
               controller: _scrollController,
               padding: EdgeInsets.only(
-                top: _showControls
+                top: _reader.showControls
                     ? MediaQuery.of(context).padding.top + 56
                     : 0,
-                bottom: _showControls ? 80 : 0,
+                bottom: _reader.showControls ? 80 : 0,
               ),
               itemCount: chapter.pages.length + 1, // +1 cho phần cuối chương
               itemBuilder: (context, index) {
@@ -559,11 +523,15 @@ class _ReadingScreenState extends State<ReadingScreen>
                   onDoubleTap: () => _openFullscreenPage(chapter.pages[index]),
                   child: Container(
                     width: double.infinity,
-                    color: _backgroundColor,
+                    color: _reader.backgroundColor,
                     child: _buildPageImage(
                       chapter.pages[index],
-                      fit: _isFitWidth ? BoxFit.fitWidth : BoxFit.contain,
-                      width: _isFitWidth ? MediaQuery.of(context).size.width : null,
+                      fit: _reader.isFitWidth
+                          ? BoxFit.fitWidth
+                          : BoxFit.contain,
+                      width: _reader.isFitWidth
+                          ? MediaQuery.of(context).size.width
+                          : null,
                     ),
                   ),
                 );
@@ -579,7 +547,7 @@ class _ReadingScreenState extends State<ReadingScreen>
             child: SafeArea(
               bottom: false,
               child: LinearProgressIndicator(
-                value: _readingProgress,
+                value: _reader.readingProgress,
                 backgroundColor: Colors.transparent,
                 valueColor: const AlwaysStoppedAnimation<Color>(
                   AppColors.gradientStart,
@@ -590,7 +558,7 @@ class _ReadingScreenState extends State<ReadingScreen>
           ),
 
           // === APPBAR (ẩn/hiện) ===
-          if (_showControls)
+          if (_reader.showControls)
             Positioned(
               top: 0,
               left: 0,
@@ -631,7 +599,7 @@ class _ReadingScreenState extends State<ReadingScreen>
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
                                 Text(
-                                  widget.story.title,
+                                  _reader.story.title,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
@@ -641,7 +609,7 @@ class _ReadingScreenState extends State<ReadingScreen>
                                   ),
                                 ),
                                 Text(
-                                  'Ch.${_currentChapterIndex + 1} • Trang $_currentPageDisplay/${chapter.pageCount}',
+                                  'Ch.${_reader.currentChapterIndex + 1} • Trang ${_reader.currentPageDisplay}/${chapter.pageCount}',
                                   style: TextStyle(
                                     color: Colors.white.withValues(alpha: 0.7),
                                     fontSize: AppFontSizes.small,
@@ -667,7 +635,7 @@ class _ReadingScreenState extends State<ReadingScreen>
             ),
 
           // === BOTTOM BAR (ẩn/hiện) ===
-          if (_showControls)
+          if (_reader.showControls)
             Positioned(
               bottom: 0,
               left: 0,
@@ -700,7 +668,9 @@ class _ReadingScreenState extends State<ReadingScreen>
                             icon: Icons.skip_previous,
                             label: 'Ch. Trước',
                             onPressed: hasPrevious
-                                ? () => _changeChapter(_currentChapterIndex - 1)
+                                ? () => _changeChapter(
+                                    _reader.currentChapterIndex - 1,
+                                  )
                                 : null,
                           ),
                           // Danh sách chương
@@ -711,12 +681,16 @@ class _ReadingScreenState extends State<ReadingScreen>
                           ),
                           // Fit width / original
                           _buildControlButton(
-                            icon: _isFitWidth
+                            icon: _reader.isFitWidth
                                 ? Icons.fit_screen
                                 : Icons.width_full,
-                            label: _isFitWidth ? 'Fit Width' : 'Original',
+                            label: _reader.isFitWidth
+                                ? 'Fit Width'
+                                : 'Original',
                             onPressed: () {
-                              setState(() => _isFitWidth = !_isFitWidth);
+                              setState(
+                                () => _reader.setFitWidth(!_reader.isFitWidth),
+                              );
                             },
                           ),
                           // Chương sau
@@ -724,7 +698,9 @@ class _ReadingScreenState extends State<ReadingScreen>
                             icon: Icons.skip_next,
                             label: 'Ch. Sau',
                             onPressed: hasNext
-                                ? () => _changeChapter(_currentChapterIndex + 1)
+                                ? () => _changeChapter(
+                                    _reader.currentChapterIndex + 1,
+                                  )
                                 : null,
                           ),
                         ],
@@ -737,10 +713,10 @@ class _ReadingScreenState extends State<ReadingScreen>
 
           // === PAGE INDICATOR (góc phải dưới, luôn hiện) ===
           Positioned(
-            bottom: _showControls ? 80 : 16,
+            bottom: _reader.showControls ? 80 : 16,
             right: 16,
             child: AnimatedOpacity(
-              opacity: _showControls ? 0.0 : 1.0,
+              opacity: _reader.showControls ? 0.0 : 1.0,
               duration: const Duration(milliseconds: 250),
               child: Container(
                 padding: const EdgeInsets.symmetric(
@@ -752,7 +728,7 @@ class _ReadingScreenState extends State<ReadingScreen>
                   borderRadius: BorderRadius.circular(AppRadius.xl),
                 ),
                 child: Text(
-                  '$_currentPageDisplay / ${chapter.pageCount}',
+                  '${_reader.currentPageDisplay} / ${chapter.pageCount}',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 12,
@@ -805,7 +781,7 @@ class _ReadingScreenState extends State<ReadingScreen>
   Widget _buildEndOfChapter(bool hasPrevious, bool hasNext) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.xxl),
-      color: _backgroundColor,
+      color: _reader.backgroundColor,
       child: Column(
         children: [
           const SizedBox(height: AppSpacing.xl),
@@ -813,7 +789,7 @@ class _ReadingScreenState extends State<ReadingScreen>
           Icon(Icons.auto_stories, size: 48, color: Colors.grey.shade600),
           const SizedBox(height: AppSpacing.lg),
           Text(
-            '— Hết chương ${_currentChapterIndex + 1} —',
+            '— Hết chương ${_reader.currentChapterIndex + 1} —',
             style: TextStyle(
               color: Colors.grey.shade500,
               fontSize: AppFontSizes.medium,
@@ -827,7 +803,8 @@ class _ReadingScreenState extends State<ReadingScreen>
               if (hasPrevious)
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => _changeChapter(_currentChapterIndex - 1),
+                    onPressed: () =>
+                        _changeChapter(_reader.currentChapterIndex - 1),
                     icon: const Icon(Icons.arrow_back),
                     label: const Text('Chương trước'),
                     style: OutlinedButton.styleFrom(
@@ -844,7 +821,8 @@ class _ReadingScreenState extends State<ReadingScreen>
               if (hasNext)
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () => _changeChapter(_currentChapterIndex + 1),
+                    onPressed: () =>
+                        _changeChapter(_reader.currentChapterIndex + 1),
                     icon: const Text('Chương sau'),
                     label: const Icon(Icons.arrow_forward),
                     style: ElevatedButton.styleFrom(

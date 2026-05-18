@@ -173,7 +173,9 @@ class MangaReadingSettingsSheet extends StatelessWidget {
                         '• Vuốt dọc: đọc trang tiếp',
                         style: TextStyle(
                           fontSize: AppFontSizes.small,
-                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                          color: isDark
+                              ? Colors.grey.shade400
+                              : Colors.grey.shade600,
                           height: 1.5,
                         ),
                       ),
@@ -271,7 +273,9 @@ class MangaReadingSettingsSheet extends StatelessWidget {
               color: color,
               shape: BoxShape.circle,
               border: Border.all(
-                color: isSelected ? AppColors.gradientStart : Colors.grey.shade400,
+                color: isSelected
+                    ? AppColors.gradientStart
+                    : Colors.grey.shade400,
                 width: isSelected ? 3 : 1,
               ),
               boxShadow: isSelected

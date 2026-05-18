@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
-import '../services/coin_service.dart';
+import '../controllers/profile_controller.dart';
 import '../utils/constants.dart';
 import 'login_screen.dart';
 import 'register_screen.dart';
@@ -15,8 +14,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final _authService = AuthService();
-  final _coinService = CoinService();
+  final _controller = ProfileController();
 
   @override
   Widget build(BuildContext context) {
@@ -31,13 +29,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: AppSpacing.xl),
 
             // --- Avatar + Tên ---
-            _authService.isLoggedIn
+            _controller.isLoggedIn
                 ? _buildLoggedInHeader(isDark)
                 : _buildGuestHeader(isDark),
             const SizedBox(height: AppSpacing.xl),
 
             // --- Ví Xu (chỉ hiện khi đã đăng nhập) ---
-            if (_authService.isLoggedIn) ...[
+            if (_controller.isLoggedIn) ...[
               _buildCoinWallet(isDark),
               const SizedBox(height: AppSpacing.lg),
             ],
@@ -107,7 +105,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
 
             // --- Nạp xu (chỉ hiện khi đã đăng nhập) ---
-            if (_authService.isLoggedIn) ...[
+            if (_controller.isLoggedIn) ...[
               const SizedBox(height: AppSpacing.sm),
               _buildMenuItem(
                 context,
@@ -121,7 +119,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
 
             // --- Admin Panel (chỉ hiện cho admin) ---
-            if (_authService.isAdmin) ...[
+            if (_controller.isAdmin) ...[
               const SizedBox(height: AppSpacing.sm),
               _buildMenuItem(
                 context,
@@ -141,7 +139,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
 
             // --- Đăng xuất (chỉ hiện khi đã đăng nhập) ---
-            if (_authService.isLoggedIn) ...[
+            if (_controller.isLoggedIn) ...[
               const SizedBox(height: AppSpacing.sm),
               _buildMenuItem(
                 context,
@@ -164,17 +162,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // === VÍ XU ===
   Widget _buildCoinWallet(bool isDark) {
     return StreamBuilder<int>(
-      stream: _coinService.getUserCoins(),
+      stream: _controller.getUserCoins(),
       builder: (context, snapshot) {
         final coins = snapshot.data ?? 0;
         return Container(
           padding: const EdgeInsets.all(AppSpacing.lg),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                Colors.amber.shade700,
-                Colors.orange.shade600,
-              ],
+              colors: [Colors.amber.shade700, Colors.orange.shade600],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -352,10 +347,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   height: 48,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [
-                        Colors.amber.shade600,
-                        Colors.orange.shade500,
-                      ],
+                      colors: [Colors.amber.shade600, Colors.orange.shade500],
                     ),
                     borderRadius: BorderRadius.circular(AppRadius.sm),
                   ),
@@ -427,12 +419,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
+      builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
-    final success = await _coinService.purchaseCoins(package);
+    final success = await _controller.purchaseCoins(package);
 
     if (!mounted) return;
     Navigator.pop(context); // Đóng loading
@@ -501,7 +491,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             child: Center(
               child: Text(
-                _authService.displayName[0].toUpperCase(),
+                _controller.displayName[0].toUpperCase(),
                 style: const TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
@@ -520,7 +510,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     Flexible(
                       child: Text(
-                        _authService.displayName,
+                        _controller.displayName,
                         style: const TextStyle(
                           fontSize: AppFontSizes.title,
                           fontWeight: FontWeight.w700,
@@ -530,7 +520,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                     // Badge Admin
-                    if (_authService.isAdmin) ...[
+                    if (_controller.isAdmin) ...[
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -565,7 +555,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _authService.displayRole,
+                  _controller.displayRole,
                   style: const TextStyle(
                     fontSize: AppFontSizes.body,
                     color: Colors.white70,
@@ -730,7 +720,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onPressed: () async {
               final scaffoldMessenger = ScaffoldMessenger.of(context);
               Navigator.pop(context);
-              await _authService.logout();
+              await _controller.logout();
               if (mounted) {
                 setState(() {}); // Refresh UI
                 scaffoldMessenger.showSnackBar(

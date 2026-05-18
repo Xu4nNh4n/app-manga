@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import '../controllers/story_search_controller.dart';
 import '../models/truyen.dart';
-import '../services/firestore_service.dart';
 import '../utils/constants.dart';
 import 'truyen_detail_screen.dart';
 
@@ -15,28 +15,20 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen>
     with SingleTickerProviderStateMixin {
   // === STATE ===
-  final TextEditingController _searchController = TextEditingController();
+  late final StorySearchController _searchState;
+  final TextEditingController _queryController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
-
-  bool _isAdvancedOpen = false; // Panel nâng cao đang mở?
-  final Set<String> _selectedGenres = {}; // Thể loại đã chọn (multi-select)
-  List<Story> _suggestions = []; // Kết quả gợi ý
-  bool _hasSearched = false; // Đã bắt đầu tìm chưa?
 
   // Animation cho advanced panel
   late AnimationController _panelAnimController;
   late Animation<double> _panelAnimation;
 
-  // Thể loại được load từ Firestore (Admin quản lý)
-  List<String> _allGenres = [];
-
-  List<Story> _allStories = []; // Cache tất cả truyện
-
   @override
   void initState() {
     super.initState();
-    _loadAllStories();
-    _loadCategories();
+    _searchState = StorySearchController()
+      ..addListener(_onSearchStateChanged)
+      ..loadInitialData();
 
     // Animation controller cho panel nâng cao
     _panelAnimController = AnimationController(
@@ -49,39 +41,19 @@ class _SearchScreenState extends State<SearchScreen>
     );
 
     // Lắng nghe thay đổi input
-    _searchController.addListener(_onSearchChanged);
+    _queryController.addListener(_onSearchChanged);
   }
 
-  Future<void> _loadAllStories() async {
-    try {
-      final stories = await FirestoreService().getStoriesOnce();
-      if (mounted) {
-        setState(() {
-          _allStories = stories;
-        });
-      }
-    } catch (_) {
-      // Handle error silently
-    }
-  }
-
-  Future<void> _loadCategories() async {
-    try {
-      final categories = await FirestoreService().getCategoriesOnce();
-      if (mounted) {
-        setState(() {
-          _allGenres = categories.map((c) => c.name).toList().cast<String>();
-        });
-      }
-    } catch (_) {
-      // Fallback: giữ danh sách rỗng
-    }
+  void _onSearchStateChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    _searchController.removeListener(_onSearchChanged);
-    _searchController.dispose();
+    _searchState.removeListener(_onSearchStateChanged);
+    _searchState.dispose();
+    _queryController.removeListener(_onSearchChanged);
+    _queryController.dispose();
     _searchFocusNode.dispose();
     _panelAnimController.dispose();
     super.dispose();
@@ -89,66 +61,27 @@ class _SearchScreenState extends State<SearchScreen>
 
   // === LOGIC TÌM KIẾM ===
   void _onSearchChanged() {
-    _performSearch(_searchController.text);
-  }
-
-  void _performSearch(String query) {
-    setState(() {
-      final trimmedQuery = query.trim();
-
-      // Empty state: chưa gõ gì VÀ chưa chọn thể loại nào
-      if (trimmedQuery.isEmpty && _selectedGenres.isEmpty) {
-        _suggestions = [];
-        _hasSearched = false;
-        return;
-      }
-
-      _hasSearched = true;
-      _suggestions = _allStories.where((story) {
-        // 1. Lọc theo keyword (tên truyện hoặc tác giả)
-        final matchesQuery = trimmedQuery.isEmpty ||
-            story.title.toLowerCase().contains(trimmedQuery.toLowerCase()) ||
-            story.author.toLowerCase().contains(trimmedQuery.toLowerCase());
-
-        // 2. Lọc theo thể loại (OR giữa các genre đã chọn)
-        final matchesGenre = _selectedGenres.isEmpty ||
-            story.genres.any((g) => _selectedGenres.contains(g));
-
-        return matchesQuery && matchesGenre;
-      }).toList();
-    });
+    _searchState.performSearch(_queryController.text);
   }
 
   // Toggle panel nâng cao
   void _toggleAdvancedPanel() {
-    setState(() {
-      _isAdvancedOpen = !_isAdvancedOpen;
-      if (_isAdvancedOpen) {
-        _panelAnimController.forward();
-      } else {
-        _panelAnimController.reverse();
-      }
-    });
+    _searchState.toggleAdvancedPanel();
+    if (_searchState.isAdvancedOpen) {
+      _panelAnimController.forward();
+    } else {
+      _panelAnimController.reverse();
+    }
   }
 
   // Chọn/bỏ chọn thể loại
   void _toggleGenre(String genre) {
-    setState(() {
-      if (_selectedGenres.contains(genre)) {
-        _selectedGenres.remove(genre);
-      } else {
-        _selectedGenres.add(genre);
-      }
-    });
-    _performSearch(_searchController.text);
+    _searchState.toggleGenre(genre, _queryController.text);
   }
 
   // Xóa tất cả bộ lọc
   void _clearFilters() {
-    setState(() {
-      _selectedGenres.clear();
-    });
-    _performSearch(_searchController.text);
+    _searchState.clearFilters(_queryController.text);
   }
 
   // Áp dụng và đóng panel
@@ -161,26 +94,22 @@ class _SearchScreenState extends State<SearchScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tìm Kiếm'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Tìm Kiếm'), elevation: 0),
       body: Column(
         children: [
           // --- THANH TÌM KIẾM + NÚT NÂNG CAO ---
           _buildSearchBar(isDark),
 
           // --- BADGE THỂ LOẠI ĐÃ CHỌN (hiện khi panel đóng) ---
-          if (!_isAdvancedOpen && _selectedGenres.isNotEmpty)
+          if (!_searchState.isAdvancedOpen &&
+              _searchState.selectedGenres.isNotEmpty)
             _buildSelectedGenresBadges(isDark),
 
           // --- PANEL NÂNG CAO (animated) ---
           _buildAdvancedPanel(isDark),
 
           // --- KẾT QUẢ TÌM KIẾM ---
-          Expanded(
-            child: _buildSearchResults(isDark),
-          ),
+          Expanded(child: _buildSearchResults(isDark)),
         ],
       ),
     );
@@ -202,27 +131,25 @@ class _SearchScreenState extends State<SearchScreen>
           // TextField tìm kiếm
           Expanded(
             child: TextField(
-              controller: _searchController,
+              controller: _queryController,
               focusNode: _searchFocusNode,
               decoration: InputDecoration(
                 hintText: AppStrings.search,
                 hintStyle: TextStyle(
                   color: isDark ? Colors.grey.shade500 : Colors.grey.shade400,
                 ),
-                prefixIcon: Icon(
-                  Icons.search,
-                  color: AppColors.gradientStart,
-                ),
-                suffixIcon: _searchController.text.isNotEmpty
+                prefixIcon: Icon(Icons.search, color: AppColors.gradientStart),
+                suffixIcon: _queryController.text.isNotEmpty
                     ? IconButton(
                         icon: Icon(
                           Icons.clear,
-                          color:
-                              isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                          color: isDark
+                              ? Colors.grey.shade400
+                              : Colors.grey.shade600,
                           size: 20,
                         ),
                         onPressed: () {
-                          _searchController.clear();
+                          _queryController.clear();
                           // _onSearchChanged sẽ tự gọi qua listener
                         },
                       )
@@ -261,7 +188,7 @@ class _SearchScreenState extends State<SearchScreen>
 
   // === NÚT NÂNG CAO ===
   Widget _buildAdvancedButton(bool isDark) {
-    final hasFilters = _selectedGenres.isNotEmpty;
+    final hasFilters = _searchState.selectedGenres.isNotEmpty;
 
     return Material(
       color: Colors.transparent,
@@ -272,13 +199,13 @@ class _SearchScreenState extends State<SearchScreen>
           duration: const Duration(milliseconds: 250),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: _isAdvancedOpen
+            color: _searchState.isAdvancedOpen
                 ? AppColors.gradientStart
                 : (hasFilters
-                    ? AppColors.gradientStart.withValues(alpha: 0.15)
-                    : (isDark ? AppColors.cardDark : Colors.grey.shade100)),
+                      ? AppColors.gradientStart.withValues(alpha: 0.15)
+                      : (isDark ? AppColors.cardDark : Colors.grey.shade100)),
             borderRadius: BorderRadius.circular(AppRadius.md),
-            border: hasFilters && !_isAdvancedOpen
+            border: hasFilters && !_searchState.isAdvancedOpen
                 ? Border.all(
                     color: AppColors.gradientStart.withValues(alpha: 0.4),
                     width: 1.5,
@@ -289,16 +216,16 @@ class _SearchScreenState extends State<SearchScreen>
             clipBehavior: Clip.none,
             children: [
               Icon(
-                _isAdvancedOpen ? Icons.tune_outlined : Icons.tune,
-                color: _isAdvancedOpen
+                _searchState.isAdvancedOpen ? Icons.tune_outlined : Icons.tune,
+                color: _searchState.isAdvancedOpen
                     ? Colors.white
                     : (hasFilters
-                        ? AppColors.gradientStart
-                        : (isDark ? Colors.white70 : Colors.grey.shade700)),
+                          ? AppColors.gradientStart
+                          : (isDark ? Colors.white70 : Colors.grey.shade700)),
                 size: 22,
               ),
               // Badge số lượng
-              if (hasFilters && !_isAdvancedOpen)
+              if (hasFilters && !_searchState.isAdvancedOpen)
                 Positioned(
                   top: -6,
                   right: -6,
@@ -311,7 +238,7 @@ class _SearchScreenState extends State<SearchScreen>
                     ),
                     child: Center(
                       child: Text(
-                        '${_selectedGenres.length}',
+                        '${_searchState.selectedGenres.length}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 10,
@@ -351,7 +278,7 @@ class _SearchScreenState extends State<SearchScreen>
               ),
             ),
             // Genre chips
-            ..._selectedGenres.map((genre) {
+            ..._searchState.selectedGenres.map((genre) {
               return Padding(
                 padding: const EdgeInsets.only(right: 4),
                 child: GestureDetector(
@@ -363,7 +290,10 @@ class _SearchScreenState extends State<SearchScreen>
                     ),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [AppColors.gradientStart, AppColors.gradientEnd],
+                        colors: [
+                          AppColors.gradientStart,
+                          AppColors.gradientEnd,
+                        ],
                       ),
                       borderRadius: BorderRadius.circular(AppRadius.full),
                     ),
@@ -379,7 +309,11 @@ class _SearchScreenState extends State<SearchScreen>
                           ),
                         ),
                         const SizedBox(width: 3),
-                        const Icon(Icons.close, size: 12, color: Colors.white70),
+                        const Icon(
+                          Icons.close,
+                          size: 12,
+                          color: Colors.white70,
+                        ),
                       ],
                     ),
                   ),
@@ -390,10 +324,7 @@ class _SearchScreenState extends State<SearchScreen>
             GestureDetector(
               onTap: _clearFilters,
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 3,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: AppColors.accent.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppRadius.full),
@@ -519,8 +450,8 @@ class _SearchScreenState extends State<SearchScreen>
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: _allGenres.map((genre) {
-                final isSelected = _selectedGenres.contains(genre);
+              children: _searchState.allGenres.map((genre) {
+                final isSelected = _searchState.selectedGenres.contains(genre);
                 return GestureDetector(
                   onTap: () => _toggleGenre(genre),
                   child: AnimatedContainer(
@@ -541,8 +472,8 @@ class _SearchScreenState extends State<SearchScreen>
                       color: isSelected
                           ? null
                           : (isDark
-                              ? Colors.white.withValues(alpha: 0.08)
-                              : Colors.grey.shade100),
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : Colors.grey.shade100),
                       borderRadius: BorderRadius.circular(AppRadius.full),
                       border: isSelected
                           ? null
@@ -567,13 +498,14 @@ class _SearchScreenState extends State<SearchScreen>
                           genre,
                           style: TextStyle(
                             fontSize: AppFontSizes.body,
-                            fontWeight:
-                                isSelected ? FontWeight.w700 : FontWeight.w500,
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
                             color: isSelected
                                 ? Colors.white
                                 : (isDark
-                                    ? Colors.white70
-                                    : Colors.grey.shade700),
+                                      ? Colors.white70
+                                      : Colors.grey.shade700),
                           ),
                         ),
                       ],
@@ -590,13 +522,15 @@ class _SearchScreenState extends State<SearchScreen>
                 // Xóa bộ lọc
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: _selectedGenres.isNotEmpty ? _clearFilters : null,
+                    onPressed: _searchState.selectedGenres.isNotEmpty
+                        ? _clearFilters
+                        : null,
                     icon: const Icon(Icons.clear_all, size: 18),
                     label: const Text('Xóa bộ lọc'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.accent,
                       side: BorderSide(
-                        color: _selectedGenres.isNotEmpty
+                        color: _searchState.selectedGenres.isNotEmpty
                             ? AppColors.accent
                             : (isDark ? Colors.white12 : Colors.grey.shade300),
                       ),
@@ -614,9 +548,9 @@ class _SearchScreenState extends State<SearchScreen>
                     onPressed: _applyAndClose,
                     icon: const Icon(Icons.check, size: 18),
                     label: Text(
-                      _selectedGenres.isEmpty
+                      _searchState.selectedGenres.isEmpty
                           ? 'Đóng'
-                          : 'Áp dụng (${_selectedGenres.length})',
+                          : 'Áp dụng (${_searchState.selectedGenres.length})',
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.gradientStart,
@@ -641,12 +575,12 @@ class _SearchScreenState extends State<SearchScreen>
   // ==========================================
   Widget _buildSearchResults(bool isDark) {
     // Trạng thái 1: Empty state — chưa gõ và chưa lọc
-    if (!_hasSearched) {
+    if (!_searchState.hasSearched) {
       return _buildEmptyState(isDark);
     }
 
     // Trạng thái 2: Không tìm thấy
-    if (_suggestions.isEmpty) {
+    if (_searchState.suggestions.isEmpty) {
       return _buildNoResults(isDark);
     }
 
@@ -722,7 +656,7 @@ class _SearchScreenState extends State<SearchScreen>
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
-          if (_selectedGenres.isNotEmpty)
+          if (_searchState.selectedGenres.isNotEmpty)
             TextButton.icon(
               onPressed: _clearFilters,
               icon: const Icon(Icons.filter_list_off, size: 18),
@@ -756,7 +690,7 @@ class _SearchScreenState extends State<SearchScreen>
               ),
               const SizedBox(width: 4),
               Text(
-                'Tìm thấy ${_suggestions.length} kết quả',
+                'Tìm thấy ${_searchState.suggestions.length} kết quả',
                 style: TextStyle(
                   fontSize: AppFontSizes.small,
                   fontWeight: FontWeight.w600,
@@ -771,9 +705,9 @@ class _SearchScreenState extends State<SearchScreen>
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            itemCount: _suggestions.length,
+            itemCount: _searchState.suggestions.length,
             itemBuilder: (context, index) {
-              final story = _suggestions[index];
+              final story = _searchState.suggestions[index];
               return _buildSuggestionItem(story, isDark);
             },
           ),
@@ -784,7 +718,7 @@ class _SearchScreenState extends State<SearchScreen>
 
   // === MỘT ITEM GỢI Ý ===
   Widget _buildSuggestionItem(Story story, bool isDark) {
-    final query = _searchController.text.trim().toLowerCase();
+    final query = _queryController.text.trim().toLowerCase();
 
     return GestureDetector(
       onTap: () {
@@ -802,7 +736,9 @@ class _SearchScreenState extends State<SearchScreen>
           borderRadius: BorderRadius.circular(AppRadius.md),
           boxShadow: [
             BoxShadow(
-              color: (isDark ? Colors.black : Colors.grey).withValues(alpha: 0.12),
+              color: (isDark ? Colors.black : Colors.grey).withValues(
+                alpha: 0.12,
+              ),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -857,7 +793,9 @@ class _SearchScreenState extends State<SearchScreen>
                     query,
                     TextStyle(
                       fontSize: AppFontSizes.small,
-                      color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                      color: isDark
+                          ? Colors.grey.shade400
+                          : Colors.grey.shade600,
                     ),
                     isDark,
                   ),
@@ -867,7 +805,9 @@ class _SearchScreenState extends State<SearchScreen>
                     spacing: 4,
                     runSpacing: 4,
                     children: story.genres.map((genre) {
-                      final isSelected = _selectedGenres.contains(genre);
+                      final isSelected = _searchState.selectedGenres.contains(
+                        genre,
+                      );
                       return Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 6,
@@ -876,14 +816,17 @@ class _SearchScreenState extends State<SearchScreen>
                         decoration: BoxDecoration(
                           color: isSelected
                               ? AppColors.gradientStart.withValues(
-                                  alpha: isDark ? 0.3 : 0.15)
+                                  alpha: isDark ? 0.3 : 0.15,
+                                )
                               : AppColors.gradientStart.withValues(
-                                  alpha: isDark ? 0.12 : 0.08),
+                                  alpha: isDark ? 0.12 : 0.08,
+                                ),
                           borderRadius: BorderRadius.circular(AppRadius.xl),
                           border: isSelected
                               ? Border.all(
                                   color: AppColors.gradientStart.withValues(
-                                      alpha: 0.5),
+                                    alpha: 0.5,
+                                  ),
                                   width: 1,
                                 )
                               : null,
@@ -911,11 +854,7 @@ class _SearchScreenState extends State<SearchScreen>
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
-                      Icons.star,
-                      color: AppColors.starGold,
-                      size: 14,
-                    ),
+                    const Icon(Icons.star, color: AppColors.starGold, size: 14),
                     const SizedBox(width: 2),
                     Text(
                       story.rating.toString(),
@@ -949,7 +888,12 @@ class _SearchScreenState extends State<SearchScreen>
     bool isDark,
   ) {
     if (query.isEmpty) {
-      return Text(text, style: baseStyle, maxLines: 1, overflow: TextOverflow.ellipsis);
+      return Text(
+        text,
+        style: baseStyle,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      );
     }
 
     final lowerText = text.toLowerCase();
@@ -957,7 +901,12 @@ class _SearchScreenState extends State<SearchScreen>
     final matchIndex = lowerText.indexOf(lowerQuery);
 
     if (matchIndex == -1) {
-      return Text(text, style: baseStyle, maxLines: 1, overflow: TextOverflow.ellipsis);
+      return Text(
+        text,
+        style: baseStyle,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      );
     }
 
     return RichText(
@@ -966,17 +915,15 @@ class _SearchScreenState extends State<SearchScreen>
       text: TextSpan(
         children: [
           // Phần trước keyword
-          TextSpan(
-            text: text.substring(0, matchIndex),
-            style: baseStyle,
-          ),
+          TextSpan(text: text.substring(0, matchIndex), style: baseStyle),
           // Keyword (highlight)
           TextSpan(
             text: text.substring(matchIndex, matchIndex + query.length),
             style: baseStyle.copyWith(
               color: AppColors.gradientStart,
-              backgroundColor:
-                  AppColors.gradientStart.withValues(alpha: isDark ? 0.2 : 0.1),
+              backgroundColor: AppColors.gradientStart.withValues(
+                alpha: isDark ? 0.2 : 0.1,
+              ),
               fontWeight: FontWeight.w800,
             ),
           ),

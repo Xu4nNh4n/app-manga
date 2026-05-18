@@ -8,18 +8,17 @@ class AppThemes {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: AppColors.gradientStart,
-        brightness: Brightness.light,
-      ).copyWith(
-        primary: AppColors.gradientStart,
-        secondary: AppColors.accent,
-        surface: Colors.white,
-      ),
+      colorScheme:
+          ColorScheme.fromSeed(
+            seedColor: AppColors.gradientStart,
+            brightness: Brightness.light,
+          ).copyWith(
+            primary: AppColors.gradientStart,
+            secondary: AppColors.accent,
+            surface: Colors.white,
+          ),
       // Font chữ chính
-      textTheme: GoogleFonts.notoSansTextTheme(
-        ThemeData.light().textTheme,
-      ),
+      textTheme: GoogleFonts.notoSansTextTheme(ThemeData.light().textTheme),
       // AppBar
       appBarTheme: AppBarTheme(
         elevation: 0,
@@ -67,19 +66,18 @@ class AppThemes {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: AppColors.gradientStart,
-        brightness: Brightness.dark,
-      ).copyWith(
-        primary: AppColors.gradientStart,
-        secondary: AppColors.accent,
-        surface: AppColors.primaryDark,
-      ),
+      colorScheme:
+          ColorScheme.fromSeed(
+            seedColor: AppColors.gradientStart,
+            brightness: Brightness.dark,
+          ).copyWith(
+            primary: AppColors.gradientStart,
+            secondary: AppColors.accent,
+            surface: AppColors.primaryDark,
+          ),
       scaffoldBackgroundColor: AppColors.primaryDark,
       // Font chữ chính
-      textTheme: GoogleFonts.notoSansTextTheme(
-        ThemeData.dark().textTheme,
-      ),
+      textTheme: GoogleFonts.notoSansTextTheme(ThemeData.dark().textTheme),
       // AppBar
       appBarTheme: AppBarTheme(
         elevation: 0,

@@ -1,9 +1,8 @@
 import 'dart:async';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import '../controllers/home_controller.dart';
 import '../models/truyen.dart';
-import '../services/firestore_service.dart';
 import '../utils/constants.dart';
 import 'truyen_detail_screen.dart';
 import 'search_screen.dart';
@@ -18,6 +17,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final _controller = HomeController();
+
   // Controller cho banner carousel
   final PageController _bannerController = PageController(
     viewportFraction: 0.85,
@@ -38,7 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _loadStories() {
-    _storiesSubscription = FirestoreService().getStories().listen((stories) {
+    _storiesSubscription = _controller.watchStories().listen((stories) {
       if (mounted) {
         setState(() {
           _stories = stories;
@@ -80,43 +81,6 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  // Helper: hiển thị ảnh (hỗ trợ cả URL và asset path)
-  Widget _buildCoverImage(String imageUrl, {double? width, BoxFit fit = BoxFit.cover}) {
-    if (imageUrl.startsWith('http')) {
-      return CachedNetworkImage(
-        imageUrl: imageUrl,
-        fit: fit,
-        width: width,
-        placeholder: (context, url) => Container(
-          color: AppColors.shimmerBase,
-          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-        ),
-        errorWidget: (context, url, error) => Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [AppColors.gradientStart, AppColors.gradientEnd],
-            ),
-          ),
-          child: const Center(child: Icon(Icons.book, size: 40, color: Colors.white54)),
-        ),
-      );
-    }
-    return Image.asset(
-      imageUrl,
-      fit: fit,
-      width: width,
-      filterQuality: FilterQuality.low,
-      errorBuilder: (context, error, stackTrace) => Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [AppColors.gradientStart, AppColors.gradientEnd],
-          ),
-        ),
-        child: const Center(child: Icon(Icons.book, size: 40, color: Colors.white54)),
-      ),
-    );
-  }
-
   // Điều hướng đến trang chi tiết truyện
   void _navigateToDetail(Story story) {
     Navigator.of(context).push(
@@ -132,102 +96,114 @@ class _HomeScreenState extends State<HomeScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : CustomScrollView(
-        slivers: [
-          // --- AppBar ---
-          SliverAppBar(
-            floating: true,
-            snap: true,
-            elevation: 0,
-            backgroundColor: isDark ? AppColors.primaryDark : Colors.white,
-            title: Row(
-              children: [
-                // Icon sách
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [AppColors.gradientStart, AppColors.gradientEnd],
-                    ),
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
+              slivers: [
+                // --- AppBar ---
+                SliverAppBar(
+                  floating: true,
+                  snap: true,
+                  elevation: 0,
+                  backgroundColor: isDark
+                      ? AppColors.primaryDark
+                      : Colors.white,
+                  title: Row(
+                    children: [
+                      // Icon sách
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [
+                              AppColors.gradientStart,
+                              AppColors.gradientEnd,
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                        ),
+                        child: const Icon(
+                          Icons.collections_bookmark,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      const Text(AppStrings.appName),
+                    ],
                   ),
-                  child: const Icon(
-                    Icons.collections_bookmark,
-                    color: Colors.white,
-                    size: 20,
+                  actions: [
+                    // Nút tìm kiếm
+                    IconButton(
+                      icon: const Icon(Icons.search),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const SearchScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+
+                // --- Banner Carousel ---
+                SliverToBoxAdapter(child: _buildBannerCarousel(isDark)),
+
+                // ============================================
+                // === SECTION 1: CẬP NHẬT GẦN ĐÂY (Grid) ===
+                // ============================================
+                SliverToBoxAdapter(
+                  child: _buildSectionHeader(
+                    AppStrings.newUpdates,
+                    isDark,
+                    icon: Icons.update,
                   ),
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                const Text(AppStrings.appName),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                  ),
+                  sliver: SliverGrid(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: 0.58,
+                        ),
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final story = _stories[index];
+                      return _buildRecentUpdateCard(story, isDark);
+                    }, childCount: _stories.length),
+                  ),
+                ),
+
+                // ============================================
+                // === SECTION 2: TRUYỆN ĐỀ XUẤT (List)    ===
+                // ============================================
+                SliverToBoxAdapter(
+                  child: _buildSectionHeader(
+                    AppStrings.featured,
+                    isDark,
+                    icon: Icons.recommend,
+                  ),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                  ),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final story = _stories[index];
+                      return _buildFeaturedCard(story, isDark);
+                    }, childCount: _stories.length),
+                  ),
+                ),
+
+                // Khoảng trống dưới cùng
+                const SliverToBoxAdapter(
+                  child: SizedBox(height: AppSpacing.xxxl),
+                ),
               ],
             ),
-            actions: [
-              // Nút tìm kiếm
-              IconButton(
-                icon: const Icon(Icons.search),
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const SearchScreen(),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-
-          // --- Banner Carousel ---
-          SliverToBoxAdapter(child: _buildBannerCarousel(isDark)),
-
-          // ============================================
-          // === SECTION 1: CẬP NHẬT GẦN ĐÂY (Grid) ===
-          // ============================================
-          SliverToBoxAdapter(
-            child: _buildSectionHeader(
-              AppStrings.newUpdates,
-              isDark,
-              icon: Icons.update,
-            ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 0.58,
-              ),
-              delegate: SliverChildBuilderDelegate((context, index) {
-                final story = _stories[index];
-                return _buildRecentUpdateCard(story, isDark);
-              }, childCount: _stories.length),
-            ),
-          ),
-
-          // ============================================
-          // === SECTION 2: TRUYỆN ĐỀ XUẤT (List)    ===
-          // ============================================
-          SliverToBoxAdapter(
-            child: _buildSectionHeader(
-              AppStrings.featured,
-              isDark,
-              icon: Icons.recommend,
-            ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate((context, index) {
-                final story = _stories[index];
-                return _buildFeaturedCard(story, isDark);
-              }, childCount: _stories.length),
-            ),
-          ),
-
-          // Khoảng trống dưới cùng
-          const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xxxl)),
-        ],
-      ),
     );
   }
 
@@ -854,14 +830,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Format thời gian dạng "x phút trước", "x ngày trước"
   String _formatTimeAgo(DateTime date) {
-    final now = DateTime.now();
-    final diff = now.difference(date);
-
-    if (diff.inMinutes < 1) return 'Vừa xong';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} phút trước';
-    if (diff.inHours < 24) return '${diff.inHours} giờ trước';
-    if (diff.inDays < 7) return '${diff.inDays} ngày trước';
-    return '${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}';
+    return _controller.formatTimeAgo(date);
   }
 }
 

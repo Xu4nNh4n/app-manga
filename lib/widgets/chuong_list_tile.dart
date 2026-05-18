@@ -98,8 +98,8 @@ class ChapterListTile extends StatelessWidget {
                               color: isCurrentChapter
                                   ? AppColors.gradientStart
                                   : (isDark
-                                      ? Colors.white
-                                      : AppColors.primaryDark),
+                                        ? Colors.white
+                                        : AppColors.primaryDark),
                             ),
                           ),
                         ),
@@ -118,8 +118,9 @@ class ChapterListTile extends StatelessWidget {
                                   AppColors.gradientEnd,
                                 ],
                               ),
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.full),
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.full,
+                              ),
                             ),
                             child: const Text(
                               'VIP',
@@ -139,8 +140,9 @@ class ChapterListTile extends StatelessWidget {
                       '${chapter.pageCount} trang • ${_formatDate(chapter.publishDate)}',
                       style: TextStyle(
                         fontSize: AppFontSizes.small,
-                        color:
-                            isDark ? Colors.grey.shade500 : Colors.grey.shade500,
+                        color: isDark
+                            ? Colors.grey.shade500
+                            : Colors.grey.shade500,
                       ),
                     ),
                   ],
@@ -151,15 +153,15 @@ class ChapterListTile extends StatelessWidget {
                 isLocked
                     ? Icons.lock
                     : (isCurrentChapter
-                        ? Icons.play_circle_filled
-                        : Icons.chevron_right),
+                          ? Icons.play_circle_filled
+                          : Icons.chevron_right),
                 color: isLocked
                     ? AppColors.gradientStart.withValues(alpha: 0.6)
                     : (isCurrentChapter
-                        ? AppColors.gradientStart
-                        : (isDark
-                            ? Colors.grey.shade600
-                            : Colors.grey.shade400)),
+                          ? AppColors.gradientStart
+                          : (isDark
+                                ? Colors.grey.shade600
+                                : Colors.grey.shade400)),
                 size: 20,
               ),
             ],

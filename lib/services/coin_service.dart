@@ -13,12 +13,48 @@ class CoinService {
 
   // === GÓI NẠP XU (Demo - ấn là nạp luôn) ===
   static const List<CoinPackage> packages = [
-    CoinPackage(id: 'pack_10k', name: '1,000 Xu', coins: 1000, price: '10,000đ', priceValue: 10000),
-    CoinPackage(id: 'pack_20k', name: '2,000 Xu', coins: 2000, price: '20,000đ', priceValue: 20000),
-    CoinPackage(id: 'pack_50k', name: '5,500 Xu', coins: 5500, price: '50,000đ', priceValue: 50000),
-    CoinPackage(id: 'pack_100k', name: '12,000 Xu', coins: 12000, price: '100,000đ', priceValue: 100000),
-    CoinPackage(id: 'pack_200k', name: '25,000 Xu', coins: 25000, price: '200,000đ', priceValue: 200000),
-    CoinPackage(id: 'pack_500k', name: '70,000 Xu', coins: 70000, price: '500,000đ', priceValue: 500000),
+    CoinPackage(
+      id: 'pack_10k',
+      name: '1,000 Xu',
+      coins: 1000,
+      price: '10,000đ',
+      priceValue: 10000,
+    ),
+    CoinPackage(
+      id: 'pack_20k',
+      name: '2,000 Xu',
+      coins: 2000,
+      price: '20,000đ',
+      priceValue: 20000,
+    ),
+    CoinPackage(
+      id: 'pack_50k',
+      name: '5,500 Xu',
+      coins: 5500,
+      price: '50,000đ',
+      priceValue: 50000,
+    ),
+    CoinPackage(
+      id: 'pack_100k',
+      name: '12,000 Xu',
+      coins: 12000,
+      price: '100,000đ',
+      priceValue: 100000,
+    ),
+    CoinPackage(
+      id: 'pack_200k',
+      name: '25,000 Xu',
+      coins: 25000,
+      price: '200,000đ',
+      priceValue: 200000,
+    ),
+    CoinPackage(
+      id: 'pack_500k',
+      name: '70,000 Xu',
+      coins: 70000,
+      price: '500,000đ',
+      priceValue: 500000,
+    ),
   ];
 
   // Lấy số xu hiện tại (stream real-time)
@@ -26,11 +62,7 @@ class CoinService {
     final user = _auth.firebaseUser;
     if (user == null) return Stream.value(0);
 
-    return _db
-        .collection('users')
-        .doc(user.uid)
-        .snapshots()
-        .map((doc) {
+    return _db.collection('users').doc(user.uid).snapshots().map((doc) {
       final data = doc.data();
       return (data?['coins'] ?? 0) as int;
     });

@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import '../utils/constants.dart';
-import '../widgets/truyen_card.dart';
-import 'truyen_detail_screen.dart';
 
 // === MÀN HÌNH THƯ VIỆN (Giai đoạn 1: cơ bản) ===
 class LibraryScreen extends StatefulWidget {
@@ -40,7 +38,9 @@ class _LibraryScreenState extends State<LibraryScreen>
           indicatorColor: AppColors.gradientStart,
           indicatorWeight: 3,
           labelColor: AppColors.gradientStart,
-          unselectedLabelColor: isDark ? Colors.grey.shade500 : Colors.grey.shade600,
+          unselectedLabelColor: isDark
+              ? Colors.grey.shade500
+              : Colors.grey.shade600,
           labelStyle: const TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: AppFontSizes.body,
@@ -56,15 +56,9 @@ class _LibraryScreenState extends State<LibraryScreen>
         controller: _tabController,
         children: [
           // Tab: Đang đọc (sẽ kết nối Firestore user data sau)
-          _buildEmptyState(
-            'Chưa có truyện đang đọc',
-            Icons.menu_book_outlined,
-          ),
+          _buildEmptyState('Chưa có truyện đang đọc', Icons.menu_book_outlined),
           // Tab: Yêu thích
-          _buildEmptyState(
-            'Chưa có truyện yêu thích',
-            Icons.favorite_border,
-          ),
+          _buildEmptyState('Chưa có truyện yêu thích', Icons.favorite_border),
           // Tab: Đã đọc xong
           _buildEmptyState(
             'Chưa có truyện đã đọc xong',
@@ -74,7 +68,6 @@ class _LibraryScreenState extends State<LibraryScreen>
       ),
     );
   }
-
 
   // Empty state
   Widget _buildEmptyState(String message, IconData icon) {

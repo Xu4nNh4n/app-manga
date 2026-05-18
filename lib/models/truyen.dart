@@ -54,7 +54,8 @@ class Story {
       chapterCount: (data['chapterCount'] ?? 0).toInt(),
       rating: (data['rating'] ?? 0.0).toDouble(),
       status: data['status'] ?? 'Đang ra',
-      lastUpdated: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      lastUpdated:
+          (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       views: (data['views'] ?? 0).toInt(),
       isHot: data['isHot'] ?? false,
       freeChapters: (data['freeChapters'] ?? 3).toInt(),

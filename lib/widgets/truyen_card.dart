@@ -85,7 +85,11 @@ class StoryCardHorizontal extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.star, color: AppColors.starGold, size: 12),
+                              const Icon(
+                                Icons.star,
+                                color: AppColors.starGold,
+                                size: 12,
+                              ),
                               const SizedBox(width: 2),
                               Text(
                                 story.rating.toString(),
@@ -180,7 +184,9 @@ class StoryCardVertical extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadius.md),
           boxShadow: [
             BoxShadow(
-              color: (isDark ? Colors.black : Colors.grey).withValues(alpha: 0.15),
+              color: (isDark ? Colors.black : Colors.grey).withValues(
+                alpha: 0.15,
+              ),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -193,7 +199,11 @@ class StoryCardVertical extends StatelessWidget {
               tag: 'cover_list_${story.id}',
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(AppRadius.sm),
-                child: _buildCoverImage(story.coverImage, width: 80, height: 110),
+                child: _buildCoverImage(
+                  story.coverImage,
+                  width: 80,
+                  height: 110,
+                ),
               ),
             ),
             const SizedBox(width: AppSpacing.md),
@@ -219,7 +229,9 @@ class StoryCardVertical extends StatelessWidget {
                     story.author,
                     style: TextStyle(
                       fontSize: AppFontSizes.small,
-                      color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                      color: isDark
+                          ? Colors.grey.shade400
+                          : Colors.grey.shade600,
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -234,7 +246,9 @@ class StoryCardVertical extends StatelessWidget {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.gradientStart.withValues(alpha: isDark ? 0.2 : 0.1),
+                          color: AppColors.gradientStart.withValues(
+                            alpha: isDark ? 0.2 : 0.1,
+                          ),
                           borderRadius: BorderRadius.circular(AppRadius.xl),
                         ),
                         child: Text(
@@ -253,7 +267,11 @@ class StoryCardVertical extends StatelessWidget {
                   Row(
                     children: [
                       // Rating
-                      const Icon(Icons.star, color: AppColors.starGold, size: 14),
+                      const Icon(
+                        Icons.star,
+                        color: AppColors.starGold,
+                        size: 14,
+                      ),
                       const SizedBox(width: 2),
                       Text(
                         story.rating.toString(),
@@ -268,14 +286,18 @@ class StoryCardVertical extends StatelessWidget {
                       Icon(
                         Icons.menu_book,
                         size: 14,
-                        color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                        color: isDark
+                            ? Colors.grey.shade400
+                            : Colors.grey.shade600,
                       ),
                       const SizedBox(width: 2),
                       Text(
                         '${story.chapterCount} chương',
                         style: TextStyle(
                           fontSize: AppFontSizes.small,
-                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                          color: isDark
+                              ? Colors.grey.shade400
+                              : Colors.grey.shade600,
                         ),
                       ),
                       const Spacer(),

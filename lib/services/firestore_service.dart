@@ -21,8 +21,8 @@ class FirestoreService {
         .orderBy('updatedAt', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) => Story.fromFirestore(doc)).toList();
-    });
+          return snapshot.docs.map((doc) => Story.fromFirestore(doc)).toList();
+        });
   }
 
   // Lấy tất cả truyện (một lần)
@@ -62,6 +62,11 @@ class FirestoreService {
     await _db.collection('stories').doc(story.id).update(story.toFirestore());
   }
 
+  // Xóa truyện
+  Future<void> deleteStory(String storyId) async {
+    await _db.collection('stories').doc(storyId).delete();
+  }
+
   // Tăng views
   Future<void> incrementViews(String storyId) async {
     await _db.collection('stories').doc(storyId).update({
@@ -80,8 +85,10 @@ class FirestoreService {
         .orderBy('chapterNumber')
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) => Chapter.fromFirestore(doc)).toList();
-    });
+          return snapshot.docs
+              .map((doc) => Chapter.fromFirestore(doc))
+              .toList();
+        });
   }
 
   // Lấy danh sách chương (một lần)
@@ -116,22 +123,21 @@ class FirestoreService {
 
   // Lấy tất cả thể loại (stream real-time)
   Stream<List<StoryCategory>> getCategories() {
-    return _db
-        .collection('categories')
-        .orderBy('name')
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) => StoryCategory.fromFirestore(doc)).toList();
+    return _db.collection('categories').orderBy('name').snapshots().map((
+      snapshot,
+    ) {
+      return snapshot.docs
+          .map((doc) => StoryCategory.fromFirestore(doc))
+          .toList();
     });
   }
 
   // Lấy tất cả thể loại (một lần)
   Future<List<StoryCategory>> getCategoriesOnce() async {
-    final snapshot = await _db
-        .collection('categories')
-        .orderBy('name')
-        .get();
-    return snapshot.docs.map((doc) => StoryCategory.fromFirestore(doc)).toList();
+    final snapshot = await _db.collection('categories').orderBy('name').get();
+    return snapshot.docs
+        .map((doc) => StoryCategory.fromFirestore(doc))
+        .toList();
   }
 
   // Thêm thể loại mới
@@ -142,7 +148,9 @@ class FirestoreService {
 
   // Cập nhật thể loại
   Future<void> updateCategory(String categoryId, String newName) async {
-    await _db.collection('categories').doc(categoryId).update({'name': newName});
+    await _db.collection('categories').doc(categoryId).update({
+      'name': newName,
+    });
   }
 
   // Xóa thể loại
@@ -164,17 +172,7 @@ class FirestoreService {
     }).toList();
   }
 
-  // Lấy truyện hot (isHot = true hoặc views cao)
-  Future<List<Story>> getHotStories() async {
-    final snapshot = await _db
-        .collection('stories')
-        .where('isHot', isEqualTo: true)
-        .orderBy('views', descending: true)
-        .get();
-    return snapshot.docs.map((doc) => Story.fromFirestore(doc)).toList();
-  }
-
-  // Lấy truyện top views  
+  // Lấy truyện top views
   Future<List<Story>> getTopViewsStories({int limit = 10}) async {
     final snapshot = await _db
         .collection('stories')
@@ -184,4 +182,3 @@ class FirestoreService {
     return snapshot.docs.map((doc) => Story.fromFirestore(doc)).toList();
   }
 }
-

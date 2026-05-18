@@ -27,7 +27,8 @@ class Chapter {
       chapterNumber: (data['chapterNumber'] ?? 0).toInt(),
       title: data['title'] ?? '',
       pages: List<String>.from(data['pages'] ?? []),
-      publishDate: (data['publishDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      publishDate:
+          (data['publishDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 

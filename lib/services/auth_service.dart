@@ -18,8 +18,12 @@ class AuthService {
   // === GETTERS ===
   User? get firebaseUser => _auth.currentUser;
   bool get isLoggedIn => _auth.currentUser != null;
-  String get displayName => _cachedUser?.displayName ?? firebaseUser?.email?.split('@').first ?? 'Khách';
-  String get displayRole => _cachedUser?.isAdmin == true ? 'Quản trị viên' : 'Người dùng';
+  String get displayName =>
+      _cachedUser?.displayName ??
+      firebaseUser?.email?.split('@').first ??
+      'Khách';
+  String get displayRole =>
+      _cachedUser?.isAdmin == true ? 'Quản trị viên' : 'Người dùng';
   bool get isAdmin => _cachedUser?.isAdmin ?? false;
   AppUser? get currentUser => _cachedUser;
 
@@ -52,7 +56,11 @@ class AuthService {
   }
 
   // === ĐĂNG KÝ ===
-  Future<AuthResult> register(String email, String password, {String? displayName}) async {
+  Future<AuthResult> register(
+    String email,
+    String password, {
+    String? displayName,
+  }) async {
     // Validate
     if (email.trim().isEmpty) {
       return AuthResult.error('Vui lòng nhập email');
@@ -126,7 +134,12 @@ class AuthService {
   }
 
   // === KIỂM TRA QUYỀN ĐỌC CHƯƠNG ===
-  bool canReadChapter(int chapterIndex, {int freeChapters = 3, String storyId = '', String chapterId = ''}) {
+  bool canReadChapter(
+    int chapterIndex, {
+    int freeChapters = 3,
+    String storyId = '',
+    String chapterId = '',
+  }) {
     // Chương miễn phí (chapterIndex bắt đầu từ 0)
     if (chapterIndex < freeChapters) return true;
 

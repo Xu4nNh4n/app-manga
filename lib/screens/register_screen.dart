@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
+import '../controllers/auth_controller.dart';
 import '../utils/constants.dart';
 import 'login_screen.dart';
 import 'main_navigation.dart';
@@ -15,6 +15,7 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
+  final _authController = AuthController();
   final _emailController = TextEditingController();
   final _displayNameController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -36,15 +37,14 @@ class _RegisterScreenState extends State<RegisterScreen>
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animController, curve: Curves.easeOut),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
-    ).animate(
-      CurvedAnimation(parent: _animController, curve: Curves.easeOut),
-    );
+    ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
     _animController.forward();
   }
 
@@ -67,9 +67,9 @@ class _RegisterScreenState extends State<RegisterScreen>
       _errorMessage = null;
     });
 
-    final result = await AuthService().register(
-      _emailController.text,
-      _passwordController.text,
+    final result = await _authController.register(
+      email: _emailController.text,
+      password: _passwordController.text,
       displayName: _displayNameController.text.trim().isNotEmpty
           ? _displayNameController.text.trim()
           : null,
@@ -183,11 +183,7 @@ class _RegisterScreenState extends State<RegisterScreen>
               ),
             ],
           ),
-          child: const Icon(
-            Icons.person_add,
-            size: 40,
-            color: Colors.white,
-          ),
+          child: const Icon(Icons.person_add, size: 40, color: Colors.white),
         ),
         const SizedBox(height: AppSpacing.lg),
         Text(
@@ -363,8 +359,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                   ),
                   onPressed: () {
                     setState(
-                      () =>
-                          _obscureConfirmPassword = !_obscureConfirmPassword,
+                      () => _obscureConfirmPassword = !_obscureConfirmPassword,
                     );
                   },
                 ),
@@ -396,13 +391,13 @@ class _RegisterScreenState extends State<RegisterScreen>
                   backgroundColor: AppColors.gradientEnd,
                   foregroundColor: Colors.white,
                   elevation: 4,
-                  shadowColor:
-                      AppColors.gradientEnd.withValues(alpha: 0.4),
+                  shadowColor: AppColors.gradientEnd.withValues(alpha: 0.4),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
-                  disabledBackgroundColor:
-                      AppColors.gradientEnd.withValues(alpha: 0.5),
+                  disabledBackgroundColor: AppColors.gradientEnd.withValues(
+                    alpha: 0.5,
+                  ),
                 ),
                 child: _isLoading
                     ? const SizedBox(
@@ -410,8 +405,9 @@ class _RegisterScreenState extends State<RegisterScreen>
                         height: 24,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
                         ),
                       )
                     : Row(
@@ -445,11 +441,7 @@ class _RegisterScreenState extends State<RegisterScreen>
   }) {
     return InputDecoration(
       labelText: label,
-      prefixIcon: Icon(
-        icon,
-        color: AppColors.gradientEnd,
-        size: 22,
-      ),
+      prefixIcon: Icon(icon, color: AppColors.gradientEnd, size: 22),
       suffixIcon: suffix,
       labelStyle: TextStyle(
         color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
@@ -472,10 +464,7 @@ class _RegisterScreenState extends State<RegisterScreen>
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: const BorderSide(
-          color: AppColors.gradientEnd,
-          width: 2,
-        ),
+        borderSide: const BorderSide(color: AppColors.gradientEnd, width: 2),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
@@ -503,9 +492,7 @@ class _RegisterScreenState extends State<RegisterScreen>
         TextButton(
           onPressed: () {
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                builder: (context) => const LoginScreen(),
-              ),
+              MaterialPageRoute(builder: (context) => const LoginScreen()),
             );
           },
           child: Text(

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../utils/constants.dart';
 import 'home_screen.dart';
-import 'phan_loai_screen.dart';
 import 'thu_vien_screen.dart';
 import 'profile_screen.dart';
 
@@ -17,7 +16,7 @@ class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0; // Tab đang chọn
 
   // Lazy screens: chỉ khởi tạo tab khi người dùng truy cập lần đầu.
-  late final List<Widget?> _screens = List<Widget?>.filled(4, null);
+  late final List<Widget?> _screens = List<Widget?>.filled(3, null);
 
   @override
   void initState() {
@@ -32,8 +31,6 @@ class _MainNavigationState extends State<MainNavigation> {
       case 1:
         return const LibraryScreen();
       case 2:
-        return const PhanLoaiScreen();
-      case 3:
         return const ProfileScreen();
       default:
         return const SizedBox.shrink();
@@ -78,11 +75,6 @@ class _MainNavigationState extends State<MainNavigation> {
               icon: const Icon(Icons.library_books_outlined),
               activeIcon: _buildActiveIcon(Icons.library_books),
               label: AppStrings.library,
-            ),
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.category_outlined),
-              activeIcon: _buildActiveIcon(Icons.category),
-              label: 'Phân loại',
             ),
             BottomNavigationBarItem(
               icon: const Icon(Icons.account_circle_outlined),

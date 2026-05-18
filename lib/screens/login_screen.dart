@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
+import '../controllers/auth_controller.dart';
 import '../utils/constants.dart';
 import 'register_screen.dart';
 import 'main_navigation.dart';
@@ -15,6 +15,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
+  final _authController = AuthController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
@@ -33,15 +34,14 @@ class _LoginScreenState extends State<LoginScreen>
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animController, curve: Curves.easeOut),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
-    ).animate(
-      CurvedAnimation(parent: _animController, curve: Curves.easeOut),
-    );
+    ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
     _animController.forward();
   }
 
@@ -62,9 +62,9 @@ class _LoginScreenState extends State<LoginScreen>
       _errorMessage = null;
     });
 
-    final result = await AuthService().login(
-      _emailController.text,
-      _passwordController.text,
+    final result = await _authController.login(
+      email: _emailController.text,
+      password: _passwordController.text,
     );
 
     if (!mounted) return;
@@ -330,13 +330,13 @@ class _LoginScreenState extends State<LoginScreen>
                   backgroundColor: AppColors.gradientStart,
                   foregroundColor: Colors.white,
                   elevation: 4,
-                  shadowColor:
-                      AppColors.gradientStart.withValues(alpha: 0.4),
+                  shadowColor: AppColors.gradientStart.withValues(alpha: 0.4),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
-                  disabledBackgroundColor:
-                      AppColors.gradientStart.withValues(alpha: 0.5),
+                  disabledBackgroundColor: AppColors.gradientStart.withValues(
+                    alpha: 0.5,
+                  ),
                 ),
                 child: _isLoading
                     ? const SizedBox(
@@ -344,8 +344,9 @@ class _LoginScreenState extends State<LoginScreen>
                         height: 24,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
                         ),
                       )
                     : Row(
@@ -379,11 +380,7 @@ class _LoginScreenState extends State<LoginScreen>
   }) {
     return InputDecoration(
       labelText: label,
-      prefixIcon: Icon(
-        icon,
-        color: AppColors.gradientStart,
-        size: 22,
-      ),
+      prefixIcon: Icon(icon, color: AppColors.gradientStart, size: 22),
       suffixIcon: suffix,
       labelStyle: TextStyle(
         color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
@@ -406,10 +403,7 @@ class _LoginScreenState extends State<LoginScreen>
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: const BorderSide(
-          color: AppColors.gradientStart,
-          width: 2,
-        ),
+        borderSide: const BorderSide(color: AppColors.gradientStart, width: 2),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
@@ -437,9 +431,7 @@ class _LoginScreenState extends State<LoginScreen>
         TextButton(
           onPressed: () {
             Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const RegisterScreen(),
-              ),
+              MaterialPageRoute(builder: (context) => const RegisterScreen()),
             );
           },
           child: Text(

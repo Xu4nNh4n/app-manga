@@ -33,15 +33,13 @@ class _LoginWallOverlayState extends State<LoginWallOverlay>
         curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
       ),
     );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _animController,
-        curve: const Interval(0.2, 1.0, curve: Curves.easeOut),
-      ),
-    );
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _animController,
+            curve: const Interval(0.2, 1.0, curve: Curves.easeOut),
+          ),
+        );
     _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
       CurvedAnimation(
         parent: _animController,
@@ -127,8 +125,9 @@ class _LoginWallOverlayState extends State<LoginWallOverlay>
                             ],
                           ),
                           border: Border.all(
-                            color:
-                                AppColors.gradientStart.withValues(alpha: 0.3),
+                            color: AppColors.gradientStart.withValues(
+                              alpha: 0.3,
+                            ),
                             width: 2,
                           ),
                         ),
@@ -225,11 +224,11 @@ class _LoginWallOverlayState extends State<LoginWallOverlay>
                             backgroundColor: AppColors.gradientStart,
                             foregroundColor: Colors.white,
                             elevation: 4,
-                            shadowColor:
-                                AppColors.gradientStart.withValues(alpha: 0.4),
+                            shadowColor: AppColors.gradientStart.withValues(
+                              alpha: 0.4,
+                            ),
                             shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.md),
+                              borderRadius: BorderRadius.circular(AppRadius.md),
                             ),
                           ),
                         ),
@@ -268,8 +267,7 @@ class _LoginWallOverlayState extends State<LoginWallOverlay>
                               width: 1.5,
                             ),
                             shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.md),
+                              borderRadius: BorderRadius.circular(AppRadius.md),
                             ),
                           ),
                         ),
@@ -292,11 +290,7 @@ class _LoginWallOverlayState extends State<LoginWallOverlay>
                   shape: BoxShape.circle,
                   color: Colors.black.withValues(alpha: 0.3),
                 ),
-                child: const Icon(
-                  Icons.close,
-                  color: Colors.white,
-                  size: 20,
-                ),
+                child: const Icon(Icons.close, color: Colors.white, size: 20),
               ),
               onPressed: () => Navigator.of(context).pop(),
             ),

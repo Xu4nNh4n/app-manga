@@ -98,10 +98,9 @@ class AppStrings {
   static const String loginNow = 'Đăng nhập ngay';
   static const String guest = 'Khách';
   static const String vipContent = 'Nội dung VIP';
-  static const String unlockContent = 'Mở khóa toàn bộ nội dung truyện bằng cách đăng nhập hoặc tạo tài khoản miễn phí.';
+  static const String unlockContent =
+      'Mở khóa toàn bộ nội dung truyện bằng cách đăng nhập hoặc tạo tài khoản miễn phí.';
 
-  // Phân loại screen strings
-  static const String phanLoai = 'Phân Loại';
   static const String dangHot = 'Đang Hot 🔥';
   static const String trendingToday = '24 giờ';
   static const String trendingWeek = '7 ngày';

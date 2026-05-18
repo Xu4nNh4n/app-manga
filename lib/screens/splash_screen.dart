@@ -1,5 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
+import '../controllers/splash_controller.dart';
 import '../utils/constants.dart';
 import 'main_navigation.dart';
 
@@ -13,10 +15,15 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
+  final _controller = SplashController();
+
   late AnimationController _fadeController;
   late AnimationController _scaleController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
+  Timer? _navigationTimer;
+  bool _isAuthReady = false;
+  bool _isSplashDelayDone = false;
 
   @override
   void initState() {
@@ -44,30 +51,37 @@ class _SplashScreenState extends State<SplashScreen>
     _initAndNavigate();
   }
 
-  Future<void> _initAndNavigate() async {
+  void _initAndNavigate() {
     // Đợi cả animation và AuthService init xong
-    await Future.wait([
-      AuthService().init(),
-      Future.delayed(const Duration(milliseconds: 2500)),
-    ]);
+    _controller.init().then((_) {
+      _isAuthReady = true;
+      _navigateWhenReady();
+    });
 
-    if (mounted) {
-      Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              const MainNavigation(),
-          transitionsBuilder:
-              (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-          transitionDuration: const Duration(milliseconds: 800),
-        ),
-      );
-    }
+    _navigationTimer = Timer(const Duration(milliseconds: 2500), () {
+      _isSplashDelayDone = true;
+      _navigateWhenReady();
+    });
+  }
+
+  void _navigateWhenReady() {
+    if (!_isAuthReady || !_isSplashDelayDone || !mounted) return;
+
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const MainNavigation(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 800),
+      ),
+    );
   }
 
   @override
   void dispose() {
+    _navigationTimer?.cancel();
     _fadeController.dispose();
     _scaleController.dispose();
     super.dispose();
@@ -110,8 +124,7 @@ class _SplashScreenState extends State<SplashScreen>
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color:
-                              AppColors.gradientStart.withValues(alpha: 0.4),
+                          color: AppColors.gradientStart.withValues(alpha: 0.4),
                           blurRadius: 30,
                           offset: const Offset(0, 10),
                         ),
